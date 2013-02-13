@@ -19,22 +19,21 @@ def u(state, c):
     
 def capital(k, c):
     """Equation of motion for capital per effective worker."""
-    kplus = (1 / ((1 + g) * (1 + n))) * ((1 - delta) * k + k**alpha - c)
-    return kplus
+    return (1 / ((1 + g) * (1 + n))) * ((1 - delta) * k + k**alpha - c)
 
 def k_star():
     """Steady state value of capital per effective worker."""
-    kstar = (alpha * beta / ((1 + g)**theta - beta * (1 - delta)))**(1 / (1 - alpha))
+    kstar = (alpha * beta / \
+             ((1 + g)**theta - beta * (1 - delta)))**(1 / (1 - alpha))
     return kstar
 
 def c_star():
     """Steady state value of consumption per effective worker."""
-    cstar = k_star()**alpha - ((1 + g) * (1 + n) - (1 - delta)) * k_star()
-    return cstar
+    return k_star()**alpha - ((1 + g) * (1 + n) - (1 - delta)) * k_star()
 
 def gamma(k):
-    """Bounds on the feasible set of choices of
-    consumption per effective worker.
+    """Bounds on the feasible set of choices of consumption per 
+    effective worker.
 
     """
     lower = 0.0
@@ -47,7 +46,8 @@ def maximum(h, a, b):
     Returns a tuple containing the maximum value of h and its maximizer.
     
     """
-    control, value = fminbound(lambda x: -h(x), a, b, full_output=True, disp=1)[0:2]
+    control, value = fminbound(lambda x: -h(x), a, b, \
+                               full_output=True, disp=1)[0:2]
     return (-value, control)
 
 def deterministicBellman(w, method='linear'):
@@ -64,7 +64,7 @@ def deterministicBellman(w, method='linear'):
                               interpolation).
                 'quadratic' - 2nd order spline interpolation
                 'cubic'     - 3rd order spline interpolation.
-                'nearest'   - The nearest neighbor algorithm selects the 
+                'nearest'   - Nearest neighbor algorithm selects the 
                               value of the nearest point and does not 
                               consider the values of neighboring points 
                               at all, yielding a piecewise-constant 
@@ -79,8 +79,9 @@ def deterministicBellman(w, method='linear'):
     pols = []
     for state in grid:
         # current value function
-        h = lambda control: u(state, control) + discount * w(capital(state, control))
-        # find the value of the control that maximizes the current value function
+        h = lambda control: u(state, control) + \
+            discount * w(capital(state, control))
+        # value of the control that maxes the current value function
         a, b = gamma(state)
         updatevector = maximum(h, a, b)
         # update the value function with maximum value of h
@@ -116,21 +117,21 @@ def initial_valueFunction(state):
     #return u(0, state)
     return u(0, c_star()) / (1 - discount)
 
-current_valueFunction  = initial_valueFunction
-current_policyFunction = lambda c: c_star()
+current_value  = initial_valueFunction
+current_policy = lambda c: c_star()
 error = 1
 num_iter = 0
 
 # actual tolerance is a function of discount factor!
 tol = 0.01 * (1 - discount)
 
-# create a new figure instance (we are going to plot value and policy iterates as we go!)
+# we are going to plot value and policy iterates as we go!
 fig = plt.figure(figsize=(12,6))
 
 # grid for plotting (different from state variable grid)
 plot_grid = np.linspace(0, kBar, 1000)
 
-# create two subplots, one for value function and one for policy function
+# create two subplots for value function and policy function
 ax1 = fig.add_subplot(121)
 ax1.axhline(u(0, c_star()) / (1 - discount), 0, kBar, color='b', 
             linestyle='dashed', alpha=0.25)
@@ -148,22 +149,28 @@ ax2.set_ylabel('$c(k_t)$', fontsize=15, rotation='horizontal')
 ax2.set_title('Optimal consumption policy', weight='bold')
 
 while True:
-    next_valueFunction, next_policyFunction = deterministicBellman(current_valueFunction, method='cubic')
-    error = np.max(np.abs(current_valueFunction(grid) - next_valueFunction(grid)))
+    next_value, next_policy = deterministicBellman(current_value, 
+                                                   method='cubic')
+    error = np.max(np.abs(current_value(grid) - next_value(grid)))
     num_iter += 1
     if error < tol:
-        final_valueFunction, final_policyFunction = next_valueFunction, next_policyFunction
+        final_valueFunction  = next_value 
+        final_policyFunction = next_policy
         print "After", num_iter, "iterations, the final error is", error
-        ax1.plot(plot_grid, final_valueFunction(plot_grid), 'b-', label='$V^*(k)$')
-        ax2.plot(plot_grid, final_policyFunction(plot_grid), 'g-', label='$c_{VFI}(k)$')
+        ax1.plot(plot_grid, final_valueFunction(plot_grid), 'b-', 
+                 label='$V^*(k)$')
+        ax2.plot(plot_grid, final_policyFunction(plot_grid), 'g-', 
+                 label='$c_{VFI}(k)$')
         break
     else:
-        current_valueFunction, current_policyFunction = next_valueFunction, next_policyFunction
+        current_value  = next_value
+        current_policy = next_policy
         if num_iter % 50 == 0:
             print "After", num_iter, "iterations, the current error is", error
-            ax1.plot(plot_grid, current_valueFunction(plot_grid), 'b--', alpha=0.25)
-            ax2.plot(plot_grid, current_policyFunction(plot_grid), 'g--', alpha=0.25)
-
+            ax1.plot(plot_grid, current_value(plot_grid), 'b--', 
+                     alpha=0.25)
+            ax2.plot(plot_grid, current_policy(plot_grid), 'g--', 
+                     alpha=0.25)
 # add legends
 ax1.legend(loc='best', frameon=False)
 ax2.legend(loc='best', frameon=False)
