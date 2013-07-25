@@ -1,0 +1,371 @@
+\documentclass[11pt]{article}
+\usepackage{geometry}                % See geometry.pdf to learn the layout options. There are lots.
+\geometry{letterpaper}                   % ... or a4paper or a5paper or ... 
+%\geometry{landscape}                % Activate for for rotated page geometry
+%\usepackage[parfill]{parskip}    % Activate to begin paragraphs with an empty line rather than an indent
+\usepackage{graphicx}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{natbib}
+\usepackage[ruled]{algorithm2e}
+\usepackage{hyperref}
+
+\newtheorem{scalar-stability}{Theorem}
+
+\title{Brief Article}
+\author{David R. Pugh}
+%\date{}                                           % Activate to display a given date or no date
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+Solutions to economic models are often functions.  Lots of economic problems lead to differential equations: ordinary differential equations (ODEs) (or systems of ODEs) appear models of economic dynamics, growth models, continuous-time optimal control models, signalling equilibria, and matching equilibria. Differential equations are examples of functional equations which are common in economics. Many/most differential equations do not have analytic solutions.  Thus need to have robust methods for numerically solving differential equations.  Numerically solving differential equations requires approximating functions.  Common approach uses finite difference methods. 
+
+Examine finite difference methods for solving systems of ordinary differential equations. A common feature of the finite differences approach is that they all discretize the independent variable. Start with basic methods for solving initial value problems using the \cite{solow1956contribution} model and spence signalling models as motivating examples; then cover shooting methods for solving optimal-control (i.e., Ramsey) models; conclude with a discussion of shooting methods for solving matching models.
+
+\section{Definitions}
+Definitions and notation follow \cite{judd1998numerical}. A first-order ordinary differential equation (ODE) has the form
+\begin{equation}\label{eq:definition-ode}
+	\frac{dy}{dx} = f(x ,y)
+\end{equation}
+where $f:\mathbb{R}^{n+1}\rightarrow\mathbb{R}^n$ and the unknown is the function $y(x): [a,b] \subset \mathbb{R}\rightarrow\mathbb{R}^n$.  In the case where $n=1$, then we have a single differential equation; when $n>1$, we call equation \ref{eq:definition-ode} a system of ordinary differential equations.  In order to solve \ref{eq:definition-ode} we require some side conditions that tie down the behavior of the function $y(x)$ at some points $x$.  The form that these side conditions take classifies the problem as either an initial value problem (IVP) or a boundaryvalue problem (BVP).
+
+\subsection{Initial value problems (IVPs)}
+If, in addition to equation \ref{eq:definition-ode}, we have side conditions that impose $y(x_0) = y_0$ for some $x_0$ then we are dealing with an initial value problem.  The simplest example of such condition would be to fix $y(a) = y_0$ (i.e., fix the value of the function $y(x)$ at the initial point $x=a$). Alternatively, we could fix the value of $y(x)$ at the end point $x=b$ by imposing some terminal condition of the form $y(b)=y_0$.  The only requirement of the side condition is that it pin down the function $y(x)$ at one point $x\in[a,b]$.
+
+The \cite{solow1956contribution} model is a classic example of an initial value problem (IVP) from economics.  The \cite{solow1956contribution} model consists of a single non-linear, first-order ordinary differential equation
+\begin{equation}\label{eq:solow-model}
+	\dot{k} = f(t, k) = sk(t)^{\alpha} - (n+g+\delta) k(t)
+\end{equation}
+and a given initial condition for capital per effective worker, $k(0) = k_0$.  
+ 
+Another classic example is the \cite{spence1973job} ``Signalling'' model. 
+
+\subsection{Boundary value problems (BVPs)}
+First order differential equations in one variable constitute IVPs by default (with only a single equation, we can fix the function $y(x)$ at only one $x$). However, with $n>1$, the side conditions can fix the various components of the function $y(x)$ at different values of $x$.  A two-point boundary value problem (2PBVP) imposes $n$ conditions on the function $y(x)$ of the form
+\begin{align}
+	g_i(y(a)) =& 0, i=1,\dots,n' \\
+	g_i(y(b)) =& 0, i=n' + 1,\dots,n 
+\end{align}
+where $g:\mathbb{R}^n\rightarrow\mathbb{R}^n$. More generally, a BVP imposes 
+\begin{equation}
+	g_i(y(x_i)) = 0
+\end{equation}
+for a set of points $x_i, a \le x_i \le b, 1 \le i \le n$ where $b=\infty$ denotes some condition on the $\lim_{x\rightarrow\infty} y(x)$. 
+
+The key difference between an initial value problem and a boundary value problem is that with initial value problems that side conditions pin down the solution, $y(x)$, at a single point, whereas with boundary value problems pin down $y(x)$ at several points.
+
+A classic example of a 2PBVP is the \cite{ramsey1928mathematical}, Cass, Koopmans model defined by the following system of ordinary differential equations.
+ \begin{align}
+ 	\dot{k} =& k(t)^{\alpha} - (n+g+\delta)k(t) - c(t)  \label{eq:ramsey-capital-motion}\\
+	\frac{\dot{c}}{c(t)} =& \frac{\alpha k(t)^{\alpha-1} - \delta - \rho - \theta g}{\theta} \label{eq:ramsey-consumption-euler}
+ \end{align}
+
+A more recent example of a 2PBVP is the Eeckhout and Kircher (2013) matching model. Positive assortative matching (PAM) system.
+\begin{align}
+	\theta'(x) =& \frac{\left(\frac{h_w(x)}{h_f(\mu(x))}\right)F_{yl}(x, \mu(x), \theta(x), 1) - F_{xr}(x, \mu(x), \theta(x), 1)}{F_{lr}(x, \mu(x), \theta(x), 1)} \\
+	\mu'(x) =& \left(\frac{h_w(x)}{h_f(\mu(x))}\right)\frac{1}{\theta(x)}
+\end{align}
+and the negative assortative matching (NAM) system
+\begin{align}
+	\theta'(x) =& \frac{-\left(\frac{h_w(x)}{h_f(\mu(x))}\right)F_{yl}(x, \mu(x), \theta(x), 1) + F_{xr}(x, \mu(x), \theta(x), 1)}{F_{lr}(x, \mu(x), \theta(x), 1)} \\
+	\mu'(x) =& -\left(\frac{h_w(x)}{h_f(\mu(x))}\right)\frac{1}{\theta(x)}
+\end{align}
+
+\section{Finite difference methods for initial value problems}  
+Perhaps the most common methods used to solve initial value problems of the form
+\begin{equation}\label{eq:ivp-benchmark}
+\frac{dy}{dx} = f(x, y),\ y(x_0)=y_0
+\end{equation}
+are called finite difference methods. Finite difference methods work by first specifying an ordered grid of values for $x$, $x_0< x_1<\dots<x_N$ and then seeking to find, for each $i$, a value $Y_i$ that is a good approximation of $y(x_i)$.  In what follows I assume that the grid is constructed by specifying a step size, $h$, and then defining the $i^{th}$ grid point as $x_i = x_0 + ih$ for $i=0,\dots,N$.
+
+All finite difference methods approximate $y(x_i)$ by constructing a difference equation of the form
+\begin{equation}
+	Y_{i+1} = F(Y_i, Y_{i-1},\dots,x_{i+1},x_i,x_{i-1},\dots)
+\end{equation}   
+that is  similar to the differential equation, and then solving this difference equation for each of $Y_1,\dots, Y_N$.\footnote{Recall that $Y_0$ is fixed by the initial condition $Y_0=y(x_0) = y_0$.} The value of the solution $y(x)$ at points $x$ not included in the original grid can be approximated using an appropriate interpolation method.
+
+\subsection{Euler's method}
+Without doubt the simplest numerical method for approximating the solution to \ref{eq:ivp-benchmark} is the Euler method. The basic idea behind Euler's method is to estimate the solution $y(x)$ by making the approximation $f(x, y(x)) \approx f(x_0, y(x_0))$ for $x \in [x_0, x_0 + h]$ for some sufficiently small $h > 0$. Integrating \ref{eq:ivp-benchmark} and applying the Euler approximation yields the following.
+\begin{equation}
+	y(x) = y(x_0) + \int_{x_0}^{x} f(\tau, y(\tau))d\tau \approx y_0 + (x - x_0)f(x_0, y_0)
+\end{equation} 
+
+Suppose that we are willing to approximate the integral on the right-hand side of equation \ref{eq:fundamental-theorem-calculus} with a box having width $h$ and height $f(x_i, y(x_i))$. In this case equation \ref{eq:fundamental-theorem-calculus} reduces to
+\begin{equation}
+	y(x_{i+1}) = y(x_i) + hf(x_i, y(x_i)).
+\end{equation}
+Setting $Y_i = y(x_i)$ yields the following difference equation.\footnote{Formally, the Euler method can also be motivated using a Taylor series argument. See \cite{judd1998numerical} for the details.}
+\begin{equation}\label{eq:euler-method}
+	Y_{i+1} = Y_i + hf(x_i, Y_i)
+\end{equation}
+This derivation of the Euler method approximates the solution $y(x)$ on the interval $[x_i, x_{i+1}]$ with a linear function of slope $f(x_i, Y_i)$. The geometric content of equation \ref{eq:euler-method} can be found in figure \ref{fig:euler-method}. 
+
+INSERT FIGURE FOR EULER METHOD HERE!!!!
+
+Note that the step size parameter, $h$, controls the fineness of the $x$ grid: a smaller step size requires a larger number of grid points to cover the interval $[a,b]$. Ideally, we would like it to be true that the approximation error of Euler's method falls if we decrease the step size (and thus increase the number of grid points). The approximation error of Euler's method turns out to be directly proportional to the step size, $h$, implying that, in the limit as $h \rightarrow 0$, Euler's method converges linearly to to true solution, $y(x)$.\footnote{For a formal statement of the convergence theorem for Euler's method see \cite{judd1998numerical}. The proof of the theorem can be found in \cite{atkinson2008introduction}.} Euler's method, as an explicit method (i.e., one that computes $Y_{i+1}$ in terms of $x_i$ and $Y_i$), is easy to program but may often run into stability problems unless the step size, $h$, is small.
+
+There are several reasons why Euler's method (and variants) are not generally used in research.  The most damning of which is the fact that Euler methods are not very accurate compared with other methods that use the same step size. The Euler method also suffers from numerical stability issues. 
+
+\subsection{Runge-Kutta methods}
+Runge-Kutta (RK) methods are based on the early 20th century work of the German mathematicians C. Runge and M. W. Kutta. The key idea behind all RK methods is to use simple formulas to look where the solution is going,  but then check whether or not those formulas make for a good approximation and implement adjustments when necessary.  
+
+\subsubsection{Basic Runge-Kutta methods}
+One of the more basic Runge-Kutta methods begins by using equation \ref{eq:euler-method} to take a ``trial'' step in the direction of the midpoint of the interval $[x_i, x_{i+1}]$, $x_m = x_i + \frac{1}{2}h$ 
+\begin{equation}
+	Y_m = Y_i + \frac{1}{2}hf(x_i, Y_i)
+\end{equation}
+and then uses the slope at the point $(x_m, Y_m)$ to compute the ``real'' step across the whole interval.
+\begin{align}
+	Y_{i+1} =& Y_i + hf(x_m, Y_m) \notag \\
+	=& Y_i + hf(x_m, Y_i + \frac{1}{2}hf(x_i, Y_i))
+\end{align}
+This method, which is more commonly known as the second-order Runge-Kutta (RK2) method, converges quadratically to the true solution $y(x_i)$ at the cost of only one extra evaluation of the function $f$ per step.   Compared to the Euler method, RK2 achieves a higher order of convergence at the cost of twice as many evaluations of $f$ per step.
+
+Although there are an almost endless number of variants on the Runge-Kutta theme,\footnote{See \cite{abramowitz1964handbook}, \cite{gear1971numerical}, and \cite{shampine1986some} for a fairly comprehensive listing of formulas for different Runge-Kutta methods.} by far the most commonly used Runge-Kutta scheme is the classic, fourth-order Runge-Kutta (RK4) method. RK4 executes the following iteration at each step.
+\begin{align}
+	z_1 =& f(x_i, Y_i) \notag \\
+	z_2 =& f\left(x_i + \frac{1}{2}h, Y_i + \frac{1}{2}hz_1\right) \notag \\
+	z_3 =& f\left(x_i + \frac{1}{2}h, Y_i + \frac{1}{2}hz_2\right) \notag \\
+	z_4 =& f\left(x_i + h, Y_i + hz_3\right) \notag \\
+	Y_{i+1} =& Y_i + \frac{h}{6}\left[z_1 + 2z_2 + 2z_3 + z_4\right] 
+\end{align}
+RK4 converges quadratically to the true solution while requiring only four evaluations of the function $f$ per step.   
+
+\subsubsection{Advanced Runge-Kutta methods}
+Runge-Kutta methods with adaptive step size control and dense output.  See \cite{dormand1980family} and \cite{shampine1986some} for details. There are two further refinements of the Runge-Kutta method implemented in \texttt{scipy.integrate} module both due to \cite{hairer1993solving} (actually Dormand and Price (1980)!)
+\begin{itemize}
+	\item \texttt{dopri5}, Runge-Kutta method of order (4)5.
+	\item \texttt{dop853}, Runge-Kutta method of order 8(5,3). 
+\end{itemize}
+dopri5 is the default solver in MatLab.
+
+\subsubsection{Application: the \cite{solow1956contribution} model}
+Compare the analytic solution to the Solow model with numerical approximations obtained using the various Runge-Kutta techniques as well as to the best Euler variant.  Use supremum norm distance metric as well as computational speed.
+
+\subsection{Multi-step methods}
+Euler's method is sometimes called a single-step method as it uses only one previous point, $(x_i, Y_i)$, and its derivative, $f(x_i, Y_i)$ to approximate the next point of the solution, $Y_{i+1}$.  Methods such as Runge-Kutta take some intermediate steps (for example, in the case of RK2, a half-step) to obtain a higher order method, but then discard all previous information after approximating the next step of the solution. Multi-step methods attempt to gain efficiency by incorporating information used to compute previous points in the solution and using it to approximate the desired current point of the solution. 
+
+In this section I will focus on linear multi-step methods which use a linear combination of $Y_i$ and $f(x_i, Y_i)$ from the previous $s$ steps to approximate the desired current step.
+\begin{align}\label{eq:basic-multi-step}
+	Y_{i+s} +& a_{s-1}Y_{i+s-1} + \dots + a_0Y_{i} = \notag \\
+	&h\bigg[b_sf(x_{i+s},Y_{i+s}) + b_{s-1}f(x_{i+s-1},Y_{i+s-1}) + \dots + b_0f(x_i, Y_{i}) \bigg]
+\end{align}
+How the coefficients $a_0, \dots, a_{s-1}$ and $b_0,\dots,b_s$ are determined is what differentiates between the various linear, multi-step methods. The objective when choosing the coefficients is to balance the need to get a good approximation to the true solution, $y(x)$, against the desire to have a method that is easy to apply (i.e., not too difficult to program or too computationally intensive).  
+
+Like single-step methods, multi-step methods can be either explicit or implicit.  Explicit linear, multi-step methods will have the coefficient $b_s=0$, implying that $Y_{i+s}$ depends entirely on previously computed values of $Y_i$. If the coefficient $b_s\neq0$, then the method is implicit.  Using implicit linear, multi-step methods requires numerically solving a non-linear equation in the unknown $Y_{i+s}$ at each step. Of the three main classes of linear multi-step methods, only one class of methods, known as Adams-Bashford (AB) methods, is explicit. The other two classes of linear, multi-step methods, Adams-Moulton (AM) and backward differentiation formula (BDF) methods, are both implicit.
+
+\subsubsection{Adams-Bashford (AB) methods}
+Adams-Bashford (AB) methods set $a_{s-1}=-1$ and impose $a_{s-2},\dots,a_{0}=0$ and $b_s=0$. Applying these restrictions yields a reduced version of equation \ref{eq:basic-multi-step}.
+\begin{align}
+	Y_{i+s} =& Y_{i+s-1} +h\bigg[b_{s-1}f(x_{i+s-1},Y_{i+s-1}) + \dots + b_0f(x_i, Y_{i}) \bigg]
+\end{align}
+
+The coefficients $b_0,\dots,b_{s-1}$ are then determined by using Lagrange polynomial interpolation to find the polynomial, $p(x)$, of degree $s-1$ that satisfies 
+\begin{equation}
+	p(x_{i+k}) = f(x_{i+k}, Y_{i+k})
+\end{equation}
+for all $k=0, \dots, s-1$. Applying the formula for Lagrange interpolation yields the following polynomial. 
+\begin{equation}
+	p(x) = \sum_{k=0}^{s-1}\frac{(-1)^{s-k-1}f(x_{i+k}, Y_{i+k})}{k!(s-j-1)!h^{s-1}}\prod_{j=0,j\neq k}^{s-1} (x -x_{i+j})
+\end{equation}
+ 
+By construction, the polynomial $p(x)$ should be a good, local approximation of the function $f(x, y)$ which suggests that we can just work with the differential equation $\frac{dy}{dx} = p(x)$.  This differential equation can be solved exactly.   
+
+Start from the fundamental theorem of calculus and substitute $p(x)$...
+\begin{align}
+	Y_{i+1} =& Y_i + \int_{x_{i+s-1}}^{x_{i+s}} p(x)dx \notag \\
+	=& Y_i + \int_{x_{i+s-1}}^{x_{i+s}} \sum_{k=0}^{s-1}\frac{(-1)^{s-k-1}f(x_{i+k}, Y_{i+k})}{k!(s-j-1)!h^{s-1}}\prod_{j=0,j\neq k}^{s-1} (x -x_{i+j})dx 
+\end{align}
+
+Approximate $f$ on the interval $[x_i, x_{t+1}]$ with a Lagrange polynomial of degree $s-1$.  Polynomial approximation incurs an error on order $h^s$ which suggests that the $s$-step AB method also has order $s$.  This has been proven.  See \cite{iserles2009first} for details.  
+ 
+Adams methods based on the idea of approximating the integral on the RHS of equation \ref{eq:fundamental-theorem-calculus} using some polynomial of order $k$.  An order $k$ polynomial leads to and order $k+1$ method.  First order Adams-Bashforth (AB) method is the forward-Euler method. 
+
+\subsubsection{Adams-Moulton (AM) methods}
+ First-order Adams-Moulton is the implicit Euler, and the second order AM is the trapezoid rule.  Computational burden of the implicit methods must be balanced against the stability issues of explicit methods.
+
+A common alternative implementation of Euler's method, sometimes called the ``implicit'' Euler method, approximates the integral on the right-hand side of equation\ref{eq:fundamental-theorem-calculus} with a box having width $h$ and height $f(x_{i+1}, y(x_{i+1}))$ which leads to a difference equation of the form
+\begin{equation}\label{eq:implicit-euler-method}
+	Y_{i+1} = Y_i + hf(x_{i+1}, Y_{i+1}).
+\end{equation}
+
+Unlike equation \ref{eq:euler-method}, equation \ref{eq:implicit-euler-method} defines $Y_i$ implicitly in terms of $x_i$ and $Y_i$.  This means that implementing the formula in equation \ref{eq:implicit-euler-method} requires solving a non-linear equation in the unknown $Y_i$ for each step $i\in0,\dots,N$. This would seem to make the implicit Euler method inferior to the simpler, explicit Euler method.  However, there are a couple of reasons why the implicit Euler approach might lead to better results. First, the approximation scheme embedded in the implicit Euler method makes use of more information than does the approximation scheme used in the explicit Euler method.\footnote{Note that the implicit Euler approach uses information about the behavior of the function $f$ at the point $(x_{i+1}, Y_{i+1})$ whereas the explicit Euler method only uses information about $f$ at the point $(x_i, Y_i)$.}  Second, the extra computational burden necessary to solve the non-linear equation is often balanced out by the ability to use a larger step size, $h$. The geometric content of equation \ref{eq:implicit-euler-method} can be found in figure \ref{fig:implicit-euler-method}. 
+INSERT FIGURE FOR IMPLICIT EULER METHOD HERE!!!!
+
+Another common refinement of the Euler method combines the implicit Euler method with a better formula for approximating the integral in the right-hand side of equation \ref{eq:fundamental-theorem-calculus}:
+\begin{align}
+	y(x_{i+1}) =& y(x_i) + \int_{x_t}^{x_{i+1}} f(t, y(t))dt \notag \\
+	\approx& y(x_i) + \frac{h}{2}\left[f(x_i, y(x_i) + f(x_{i+1}, y(x_{i+1})\right] - \frac{h^3}{12}y'''(\xi)
+\end{align} 
+for some $\xi \in [x_i, x_{i+1}]$. After dropping the $h^3$ term (which should be nearly zero so long as $h$ is small), the above refinement leads to the following difference equation
+\begin{equation}
+	Y_{i+1} = Y_i + \frac{h}{2}\left[f(x_i, Y_i) + f(x_{i+1}, Y_{i+1})\right] 
+\end{equation}
+and is frequently referred to as the ``trapezoid method''.  Although each step in the trapezoid method is more computationally burdensome compared with both the basic Euler method and the implicit Euler method,\footnote{Note that each step of the trapezoid method requires solving a non-linear equation in the unknown $Y_{i+1}$ and an extra evaluation of the function $f$.} the trapezoid method converges more quickly to the true solution $y(x)$.  Formally, the trapezoid method converges quadratically to the true solution as $h\rightarrow 0$.  
+
+\subsubsection{Backwards differentiation formula (BDF) methods}
+Methods that are well-suited to stiff problems.
+
+Discuss basic theory behind the \texttt{lsoda} and \texttt{vode} solvers.
+ 
+The Jacobian for the \cite{solow1956contribution} model is trivial.
+\begin{equation}
+	\frac{\partial \dot{k}}{\partial k} = s\alpha \left(\frac{1}{k(t)}\right)^{1-\alpha} - (n+g+\delta)
+\end{equation}
+
+
+\subsection{Simulating solution trajectories}
+First I develop a general analytic solution for the model. Then I discuss numerical methods for approximating the solution and use the analytic solution to assess the quality of the numerical approximations.
+
+\subsubsection{Analytic Solution}
+This presentation of the analytic solution to the Solow model follows \cite{sato1963fiscal}.  The basic idea is to use a clever change of variables to transform equation \ref{eq:solow-model} in to a linear, first-order differential equation.  Start by defining a new variable, $z(t)$, as follows. 
+\begin{equation}\label{eq:capital-output-ratio}
+	z(t) = \frac{k(t)}{y(t)} = k(t)^{1-\alpha} 
+\end{equation}
+
+Next, differentiate equation \ref{eq:capital-output-ratio} with respect to $t$ to obtain the following relationship between $\dot{z}$ and $\dot{k}$
+\begin{equation}
+	\dot{z} = (1-\alpha)k(t)^{-\alpha}\dot{k} \implies \dot{k} = \dot{z}(1-\alpha)^{-1}k(t)^{\alpha}
+\end{equation}
+which can be used to substitute for $\dot{k}$ in equation \ref{eq:solow-model} in order to yield the following linear, first-order differential equation
+\begin{align}\label{eq:solow-model-2}
+	%\dot{z}(1-\alpha)^{-1}k(t)^{\alpha} =& sk(t)^{\alpha} - (n + g + \delta) k(t) \notag \\
+	%\dot{z} =& s(1-\alpha) - (n + g + \delta) (1-\alpha) k(t)^{1 - \alpha} \notag \\
+	%\dot{z} =& s(1-\alpha) - (n + g + \delta) (1-\alpha) z(t) \notag \\
+	\dot{z} + (n + g + \delta) (1-\alpha) z(t) =& s(1-\alpha) 
+\end{align}
+with $z(0) = k_0^{1-\alpha}$.
+
+The solution to equation \ref{eq:solow-model-2}, which can be found using standard methods, tells us that the capital-output ratio is a weighted average of its initial value and its steady-state value, where the weights are exponential functions of time.\footnote{See appendix \ref{app:intermediate-solow-solution-2} for a complete derivation of this equation.}
+\begin{equation}\label{eq:intermediate-solow-solution-2}
+	z(t)= \left(\frac{s}{n+g+\delta}\right)\left(1 -  e^{-(n + g + \delta) (1-\alpha) t}\right) + k_0^{1-\alpha}e^{-(n + g + \delta) (1-\alpha) t}
+\end{equation} 
+
+From equation \ref{eq:intermediate-solow-solution-2} it is straightforward to obtain a closed form solution for the time path of $k(t)$.
+\begin{equation}\label{eq:final-solow-solution}
+	k(t) = \left[\left(\frac{s}{n+g+\delta}\right)\left(1 -  e^{-(n + g + \delta) (1-\alpha) t}\right) + k_0^{1-\alpha}e^{-(n + g + \delta) (1-\alpha) t}\right]^{\frac{1}{1-\alpha}}
+\end{equation}
+
+
+\subsection{Impulse responses}
+
+\section{\cite{ramsey1928mathematical}}
+
+\subsection{Finding the steady state}
+
+\subsubsection{Analytic expressions}
+Analytic expRressions for the steady state values of the \cite{ramsey1928mathematical} model are
+\begin{align}
+	k^* =& \left(\frac{\alpha}{\delta+\rho+\theta g}\right)^{\frac{1}{1-\alpha}} \\
+	c^* =& \left(\frac{\alpha}{\delta+\rho+\theta g}\right)^{\frac{\alpha}{1-\alpha}} - (n+g+\delta)\left(\frac{\alpha}{\delta+\rho+\theta g}\right)^{\frac{1}{1-\alpha}}
+\end{align}
+
+\subsubsection{Root-finding in two (or more!) dimensions}
+
+\subsubsection{Stability analysis}
+
+ \subsection{Solving the model}
+ 
+ \subsubsection{Analytic solution}
+ Although there is no known analytic solution for the generic parameter values, there is analytic solution for a model where $\alpha = \theta$.
+ 
+Ramsey model is defined by the following system of differential equation.
+ \begin{align}
+ 	\dot{k} =& k(t)^{\alpha} - (n+g+\delta)k(t) - c(t)  \label{eq:ramsey-capital-motion}\\
+	\frac{\dot{c}}{c(t)} =& \frac{\alpha k(t)^{\alpha-1} - \delta - \rho - \theta g}{\theta} \label{eq:ramsey-consumption-euler}
+ \end{align}
+
+Start by defining two new variables, $z(t)$, as follows. 
+\begin{align}
+	z(t) =& \frac{k(t)}{y(t)} = k(t)^{1-\alpha} \label{eq:ramsey-capital-output-ratio} \\
+	\chi(t) =& \frac{c(t)}{k(t)} \label{eq:ramsey-consumption-capital-ratio}
+\end{align}
+
+Differentiating equation \ref{eq:ramsey-capital-output-ratio} with respect to $t$ yields a relation between $\dot{z}$ and $\dot{k}$ 
+\begin{equation}
+	\dot{z} = (1 - \alpha)k(t)^{-\alpha}\dot{k}
+\end{equation}
+which can be used to transform equation \ref{eq:ramsey-capital-motion} into another non-linear differential equation.
+\begin{align}\label{eq:ramsey-capital-output-motion}
+	%\dot{z}  =& (1 - \alpha)k(t)^{-\alpha}\left[k(t)^{\alpha} - (n+g+\delta)k(t) - c(t) \right] \notag \\
+	%\dot{z} =& (1 - \alpha) - (1-\alpha)(n+g+\delta)k(t)^{1-\alpha} - (1-\alpha)c(t)k(t)^{-\alpha} \notag \\
+	%\dot{z} =& (1 - \alpha) - (1-\alpha)(n+g+\delta)z(t) - (1-\alpha)\frac{c(t)}{y(t)} \notag \\
+	%\dot{z} =& (1 - \alpha) - (1-\alpha)(n+g+\delta)z(t) - (1-\alpha)\chi(t)z(t) \notag \\
+	\dot{z} + (1-\alpha)(n+g+\delta)z(t) + (1-\alpha)\chi(t)z(t) =& (1 - \alpha)
+\end{align}
+
+Taking logarithms and then differentiating equation \ref{eq:ramsey-consumption-capital-ratio} with respect to $t$ yields a relation between the growth rate of $\chi(t)$ and those of $c(t)$ and $k(t)$
+\begin{equation}
+	\frac{\dot{\chi(t)}}{\chi(t)} = \frac{\dot{c(t)}}{c(t)} - \frac{\dot{k(t)}}{k(t)} 
+\end{equation}
+which, after imposing the restriction that $\alpha=\theta$, can be used to transform equation \ref{eq:ramsey-consumption-euler} into
+\begin{align}
+	%\frac{\dot{\chi(t)}}{\chi(t)} =& \frac{\alpha k(t)^{\alpha-1} - \delta - \rho - \theta g}{\theta} - k(t)^{\alpha-1} + (n+g+\delta) + \frac{c(t)}{k(t)} \notag \\
+	%\frac{\dot{\chi(t)}}{\chi(t)} =& \frac{\alpha k(t)^{\alpha-1} - \delta - \rho - \alpha g}{\alpha} - k(t)^{\alpha-1} + (n+g+\delta) + \frac{c(t)}{k(t)} \notag \\
+	%\frac{\dot{\chi(t)}}{\chi(t)} =& -\frac{\delta + \rho + \alpha g}{\alpha}  + (n+g+\delta) + \chi(t) \notag \\
+	%\frac{\dot{\chi(t)}}{\chi(t)} - \chi(t) =& \left[\frac{\alpha n +\alpha g+\alpha \delta - \delta - \rho - \alpha g}{\alpha}\right] \notag \\
+	\frac{\dot{\chi(t)}}{\chi(t)} - \chi(t) =& \left[\frac{\alpha n - (1 - \alpha) \delta - \rho}{\alpha}\right] 
+\end{align}
+
+Now guess that the consumption-capital ratio, $\chi(t)$, is constant along the saddle-path. 
+\begin{equation}
+	 \chi(t) = \chi^* = \frac{(1 - \alpha) \delta + \rho - \alpha n}{\alpha}\
+\end{equation}
+
+	 This conjecture makes equation \ref{eq:ramsey-capital-output-motion} into a linear differential equation 
+\begin{equation}
+	\dot{z} + (1-\alpha)\left[(n+g+\delta) + m\right]z(t) = (1 - \alpha)
+\end{equation}
+which, given the initial condition $z(0) = k_0^{1-\alpha}$, can be solved using standard methods to yield.
+
+\appendix
+
+\section{Derivation of equation \ref{eq:intermediate-solow-solution-2}} \label{app:intermediate-solow-solution-2}
+The solution method presented here is follows \cite{chiang2005fundamental} and is intentionally pedestrian. Those interested in a more formal treatment should see ??.  Equation \ref{eq:solow-model-2}, reproduced here for convenience, is an example of a nonhomogenous, first-order linear differential equation with constant coefficient and constant term.  
+\begin{equation}
+	\dot{z} + (n + g + \delta) (1-\alpha) z(t) = s(1-\alpha) 
+\end{equation}
+The solution of this equation will consist of the sum of two terms called the complementary function, $z_c$ and the particular integral, $z_p$, both of which have significant economic interpretation.  
+
+Mathematically, the complementary function, $z_c$, is simply the general solution of the following reduced form, homogenous version of equation \ref{eq:solow-model-2}.
+\begin{equation}\label{eq:solow-model-2-reduced}
+	\dot{z} + (n + g + \delta) (1-\alpha) z(t) = 0 
+\end{equation}
+Standard techniques for solving homogenous, first-order linear differential equations demonstrate that the general solution of equation \ref{eq:solow-model-2-reduced} must be of the form
+\begin{equation}
+	z_c = Ce^{-(n + g + \delta)(1-\alpha)t}
+\end{equation}
+where $C$ is some, as yet unknown, constant.
+
+The particular integral, $z_p$, is any particular solution of \ref{eq:solow-model-2}.  Suppose that $z(t)$ is some constant function. In this case $\dot{z}=0$ and equation \ref{eq:solow-model-2} becomes
+\begin{equation}
+	z_p = \frac{s}{n+g+\delta}
+\end{equation}
+which is a valid solution so long as $n + g + \delta \neq 0$.
+
+The sum of the complementary function and the particular integral constitutes the general solution to equation \ref{eq:solow-model-2}.
+\begin{equation}\label{eq:general-solution-solow-2}
+	z(t) = z_c + z_p =  Ce^{-(n + g + \delta)(1-\alpha)t} + \left(\frac{s}{n+g+\delta}\right)
+\end{equation}
+
+Finally, use the initial condition, $z(0) = k_0^{1-\alpha}$, to solve for the constant, $C$ yields
+\begin{align}\label{eq:integrating-constant}
+	%z(0) =& \left(\frac{s}{n+g+\delta}\right) + C \notag \\ 
+	%k_0^{1-\alpha} =& \left(\frac{s}{n+g+\delta}\right) + C \notag \\ 
+	C =& k_0^{1-\alpha} - \left(\frac{s}{n+g+\delta}\right)
+\end{align}
+Combining equations \ref{eq:general-solution-solow-2} and \ref{eq:integrating-constant} yields the following closed for solution for the capital-output ratio, $z(t)$.
+\begin{equation}
+	z(t)= \left(\frac{s}{n+g+\delta}\right)\left(1 -  e^{-(n + g + \delta) (1-\alpha) t}\right) + k_0^{1-\alpha}e^{-(n + g + \delta) (1-\alpha) t}
+\end{equation} 
+
+At this point it is worth discussing the economic interpretation of the complementary function and the particular integral.  The particular integral, $z_p$, is the inter-temporal equilibrium value for the capital-output ratio, $z(t)$, whilst the complementary function,  $z_c$, represents deviations from this long-run equilibrium.  Dynamic stability of $z(t)$ requires that deviations from equilibrium described by $z_c$ die out as $t\rightarrow\infty$.  In order for $\lim_{t\rightarrow\infty} z_c = 0$, we require that $(n + g + \delta)(1-\alpha) > 0$.
+
+\bibliographystyle{chicago}
+\bibliography{lab-1}
+
+\end{document}  
