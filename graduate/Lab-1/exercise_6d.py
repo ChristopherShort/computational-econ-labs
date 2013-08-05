@@ -71,10 +71,10 @@ model.steady_state.set_functions(steady_state_funcs)
 model.calibrate('GBR')
 
 # create a new figure
-fig = plt.figure(figsize=(8,6))
+fig = plt.figure(figsize=(12,8))
 
-# plot comparative statics for the solow model using one line of code!
-model.plot_solow_diagram(gridmax=15, param='alpha', shock=1.5, reset=True)
+# irf for shock to n
+model.plot_impulse_response('delta', 1.5, 100, True)
 
 # display the figure
 plt.show()

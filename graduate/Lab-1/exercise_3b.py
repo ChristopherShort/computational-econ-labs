@@ -73,24 +73,9 @@ model.calibrate('GBR')
 # create a new figure
 fig = plt.figure(figsize=(8,6))
 
-# plot the old Solow Diagram with new labels 
-ax_old, y_old, actual_old, break_even_old = model.plot_solow_diagram(gridmax=20)
-break_even_old.set_alpha(0.25)
-break_even_old.set_linestyle('dashed')
-break_even_old.set_label(r'$i_{br, old}$')
-
-# change the rate of technological progress and recompute steady state values
-model.args['g'] = 0.05
-model.steady_state.set_values()
-
-# create a new Solow Diagram
-ax_new, y_new, actual_new, break_even_new = model.plot_solow_diagram(gridmax=20)
-break_even_new.set_label(r'$i_{br, new}$')
-ax_new.set_title(r'A rise in $g$ leads to a fall in $k^*$!', fontsize=20, 
-                 family='serif')
-
-# add a legend
-plt.legend(loc='best', frameon=False)
+# plot comparative statics for the solow model using one line of code!
+model.plot_solow_diagram(gridmax=15, param='g', shock=2.0, reset=True)
 
 # display the figure
 plt.show()
+
