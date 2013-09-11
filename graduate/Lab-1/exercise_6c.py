@@ -44,8 +44,62 @@ def marginal_product_capital(t, k, params):
 
     return alpha * k**(alpha - 1)
 
+def equation_of_motion_capital(t, k, params):
+    """
+    Equation of motion for capital (per worker/effective worker).
+
+    Arguments:
+
+        t:      (array-like) Time.
+        k:      (array-like) Capital (per person/effective person).
+        params: (dict) Dictionary of parameter values.
+       
+    Returns:
+
+        k_dot: (array-like) Time-derivative of capital (per worker/effective 
+               worker).
+
+    """
+    # extract params
+    s     = params['s']
+    n     = params['n']
+    g     = params['g']
+    delta = params['delta']
+
+    k_dot = s * cobb_douglas_output(t, k, params) - (n + g + delta) * k
+    
+    return k_dot
+    
+def solow_jacobian(t, k, params):
+    """
+    The Jacobian of the Solow model.
+    
+    Arguments:
+
+        t:      (array-like) Time.
+        k:      (array-like) Capital (per person/effective person).
+        params: (dict) Dictionary of parameter values.
+       
+    Returns:
+
+        jac: (array-like) Value of the derivative of the equation of 
+             motion for capital (per worker/effective worker) with 
+             respect to k.
+
+    """
+    # extract params
+    s     = params['s']
+    n     = params['n']
+    g     = params['g']
+    delta = params['delta']
+
+    k_dot = s * marginal_product_capital(t, k, params) - (n + g + delta)
+    
+    return k_dot
+    
 def analytic_k_star(params): 
-    """The steady-state level of capital stock per effective worker, k_bar, 
+    """
+    The steady-state level of capital stock per effective worker, k_bar, 
     in the Solow model is a function of the 5 exogenous parameters!
     
     """
@@ -59,8 +113,9 @@ def analytic_k_star(params):
     return (s / (n + g + delta))**(1 / (1 - alpha))
      
 # create a new model object
-model = growth.SolowModel(cobb_douglas_output, marginal_product_capital)
-
+model = growth.SolowModel(cobb_douglas_output, equation_of_motion_capital, 
+                          solow_jacobian)
+                          
 # create a dictionary of steady state expressions
 steady_state_funcs = {'k_star':analytic_k_star}
 
