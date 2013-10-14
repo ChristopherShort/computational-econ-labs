@@ -116,8 +116,7 @@ for order in range(1,7):
             
     lsoda_traj = model.integrate(0, k0, 1.0, T=100, integrator='lsoda', **kwargs)
 
-    #kwargs={'method':'adams', 'order':5, 'with_jacobian':True}
-    #vode_traj = model.integrate(0, k0, 100, 1.0, 'vode', **kwargs)
+    backward_euler_traj = model.integrate(0, k0, 1.0, T=100, integrator='backward_euler')
 
     grid = lsoda_traj[:,0]
     analytic_trajectory = solow_analytic_solution(k0, grid, model.args)

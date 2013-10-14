@@ -112,8 +112,8 @@ def analytic_k_star(params):
     return (s / (n + g + delta))**(1 / (1 - alpha))
      
 # create a new model object
-model = growth.SolowModel(cobb_douglas_output, equation_of_motion_capital, 
-                          solow_jacobian)
+model = growth.SolowModel(cobb_douglas_output, marginal_product_capital, 
+                          equation_of_motion_capital, solow_jacobian)
 
 # create a dictionary of steady state expressions
 steady_state_funcs = {'k_star':analytic_k_star}
@@ -122,7 +122,7 @@ steady_state_funcs = {'k_star':analytic_k_star}
 model.steady_state.set_functions(steady_state_funcs)
 
 # calibrate the model and compute steady state values
-model.calibrate('GBR')
+growth.calibrate_cobb_douglas(model, 'GBR')
 
 # create a new figure
 fig = plt.figure(figsize=(8,6))
